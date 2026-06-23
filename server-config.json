@@ -1,0 +1,15 @@
+{
+  "ip": "82.197.71.113",
+  "port": 6010,
+  "setBy": "smoke.3221",
+  "timestamp": 1782223228262,
+  "lastKnownInfo": {
+    "hostname": "Southside City Roleplay",
+    "players": 1,
+    "maxPlayers": 1000,
+    "gamemode": "SC:RP",
+    "language": "English/Filipino",
+    "passworded": false,
+    "online": true
+  }
+}
