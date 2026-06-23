@@ -436,7 +436,7 @@ const commands = [
         .setDescription('Set the server IP address')
         .addStringOption(option =>
             option.setName('ip')
-                .setDescription('The server IP address (e.g., 154.26.137.65:7032)')
+                .setDescription('The server IP address (e.g., 82.197.71.113:7032)')
                 .setRequired(true)),
                 
     new SlashCommandBuilder()
@@ -454,11 +454,11 @@ const commands = [
 
 // Configuration
 const CONFIG = {
-    TOKEN: process.env.DISCORD_TOKEN || 'MTM3OTc1NDg2ODAwNDM2MDIxMg.GECHBi.px7dadS4kNg6ID9jWpeFAoQQS9U9u3t2tqSO-k',
-    GUILD_ID: '1365235055412121662',
-    VERIFICATION_CHANNEL_ID: '1382267257664573471',
-    VERIFIED_ROLE_ID: '1365235055412121664',
-    LOG_CHANNEL_ID: '1381508470469038230' 
+    TOKEN: 'MTUxODE0MTQ3NzEyNzk4MzEyNA.GN3xyZ.PE2oOonps5fkSeF1BJik5pkE7_KD1PDdVK3ljk',
+    GUILD_ID: '1329210060685185157',
+    VERIFICATION_CHANNEL_ID: '1449278103808643124',
+    VERIFIED_ROLE_ID: '1331652221498167316',
+    LOG_CHANNEL_ID: '1445021243366440960' 
 };
 
 // Function to query SA-MP server
@@ -657,12 +657,12 @@ function saveVerifiedUsers() {
 function createVerificationEmbed(client) {
     return new EmbedBuilder()
         .setAuthor({
-            name: 'GTA: VANGUARD ROLEPLAY',
+            name: 'SOUTHSIDE CITY ROLEPLAY ',
             iconURL: client.user.displayAvatarURL()
         })
-        .setTitle('GTA: Vanguard Reality Roleplay')
+        .setTitle('SOUTHSIDE CITY ROLEPLAY ')
         .setDescription(
-            'Welcome to the official Discord server of Vanguard RP! 👋\n\n' +
+            'Welcome to the official Discord server of  SCRP! 👋\n\n' +
             'To keep our community safe and organized, please verify your account.\n\n' +
             'Once verified, you’ll get full access to channels, updates, and events.\n\n' +
             '_Thank you for joining us — we’re excited to have you here!_'
@@ -670,7 +670,7 @@ function createVerificationEmbed(client) {
         .setColor(0x5865F2)
         .setThumbnail('https://cdn.discordapp.com/attachments/1380124644891426816/1380484264835158087/file_0000000069ec61fdbc59dc74f78f16f1.png')
         .setFooter({ 
-            text: '© KAIRO • Vanguard RP', 
+            text: '© Syntaxerror • SCRP', 
             iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp();
@@ -742,10 +742,10 @@ const bcrypt = require('bcrypt');
 
 async function verifyGameAccount(username, password) {
     const conn = await mysql.createConnection({
-        host: '154.26.137.65',
-        user: 'u21_Uo6HgLTSKK',
-        password: 'ea+TX6Zl^909oMc=Bz6uVm2c',
-        database: 's21_corner'
+        host: '82.197.71.113',
+        user: 'u56_wrmIu4WuvU',
+        password: 'vO5y9NYEiuzH@dujdZ9c7!FU',
+        database: 's56_gab'
     });
 
     const [rows] = await conn.execute('SELECT * FROM users WHERE username = ?', [username.trim()]);
@@ -783,10 +783,10 @@ async function updateUserVerification(gameUsername, discordId) {
     let connection;
     try {
         connection = await mysql.createConnection({
-            host: '154.26.137.65',
-            user: 'u21_Uo6HgLTSKK',
-            password: 'ea+TX6Zl^909oMc=Bz6uVm2c',
-            database: 's21_corner'
+            host: '82.197.71.113',
+            user: 'u56_wrmIu4WuvU',
+            password: 'vO5y9NYEiuzH@dujdZ9c7!FU',
+            database: 's56_gab'
         });
 
         // Step 1: Get UID using username
@@ -803,7 +803,7 @@ async function updateUserVerification(gameUsername, discordId) {
         const [result] = await connection.execute(`
             UPDATE users 
             SET verified_id = ?, 
-                verified = 1 
+                verify = 1 
             WHERE uid = ?
         `, [discordId, uid]);
 
@@ -832,10 +832,10 @@ async function unlinkUserVerification(discordId) {
     let connection;
     try {
         connection = await mysql.createConnection({
-            host: '154.26.137.65',
-            user: 'u21_Uo6HgLTSKK',
-            password: 'ea+TX6Zl^909oMc=Bz6uVm2c',
-            database: 's21_corner'
+            host: '82.197.71.113',
+            user: 'u56_wrmIu4WuvU',
+            password: 'vO5y9NYEiuzH@dujdZ9c7!FU',
+            database: 's56_gab'
         });
 
         const [result] = await connection.execute(`
@@ -867,9 +867,9 @@ async function unlinkUserVerification(discordId) {
 
 // Game server configuration
 const gameServerConfig = {
-    host: '154.26.137.65', // Replace with your SA-MP server IP
-    port: 7032, // Replace with your SA-MP server port
-    rconPassword: 'dsfbavSDcds' // Replace with your RCON password
+    host: '82.197.71.113', // Replace with your SA-MP server IP
+    port: 6010, // Replace with your SA-MP server port
+    rconPassword: 'dadasgab23423423' // Replace with your RCON password
 };
 
 // Function to send RCON command to game server
@@ -1464,7 +1464,7 @@ client.on('interactionCreate', async interaction => {
 		        const member = interaction.guild.members.cache.get(interaction.user.id);
 		        if (member) {
 		            try {
-		                await member.roles.remove('1365235055412121664');
+		                await member.roles.remove('1331652221498167316');
 		            } catch (error) {
 		                console.error('Error removing role:', error);
 		            }
@@ -1530,7 +1530,7 @@ client.on('interactionCreate', async interaction => {
 		                const member = interaction.guild.members.cache.get(interaction.user.id);
 		                if (member) {
 		                    try {
-		                        await member.roles.add('1365235055412121664');  // <-- verified role ID
+		                        await member.roles.add('1331652221498167316');  // <-- verified role ID
 		                    } catch (error) {
 		                        console.error('Error adding role:', error);
 		                    }
@@ -1584,4 +1584,4 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start the bot
-client.login(CONFIG.TOKEN);;
+client.login('MTUxODE0MTQ3NzEyNzk4MzEyNA.GN3xyZ.PE2oOonps5fkSeF1BJik5pkE7_KD1PDdVK3ljk');;
