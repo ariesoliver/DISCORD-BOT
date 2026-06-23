@@ -404,9 +404,9 @@ const commands = [
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
         
     new SlashCommandBuilder()
-	    .setName('setup-tickets')
-	    .setDescription('Setup the ticket system in this channel')
-	    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+            .setName('setup-tickets')
+            .setDescription('Setup the ticket system in this channel')
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
     // Unlock Channel Command
     new SlashCommandBuilder()
@@ -440,12 +440,12 @@ const commands = [
                 .setRequired(true)),
                 
     new SlashCommandBuilder()
-	    .setName('ip')
-	    .setDescription('Check the current server IP and status'),
-	
+            .setName('ip')
+            .setDescription('Check the current server IP and status'),
+        
     new SlashCommandBuilder()
-	    .setName('players')
-	    .setDescription('Show the current online players of the configured server'),
+            .setName('players')
+            .setDescription('Show the current online players of the configured server'),
     
     new SlashCommandBuilder()
         .setName('server')
@@ -752,29 +752,26 @@ async function verifyGameAccount(username, password) {
     await conn.end();
 
     if (rows.length === 0) {
-        console.log('❌ User not found');
+        console.log('❌ User not found:', username.trim());
         return { success: false };
     }
 
-    let hash = rows[0].password;
+    const storedHash = rows[0].password.toUpperCase();
+    const inputHash = require('crypto').createHash('sha512').update(password.trim()).digest('hex').toUpperCase();
 
-    if (hash.startsWith('$2y$')) {
-        hash = '$2b$' + hash.slice(4);
-    }
+    console.log('🔍 Hash match check for:', username.trim());
 
-    const match = await bcrypt.compare(password.trim(), hash);
-
-    if (match) {
+    if (storedHash === inputHash) {
         return {
             success: true,
             playerData: {
                 username: rows[0].username,
                 level: rows[0].level,
-                playTime: rows[0].play_time
+                playTime: rows[0].hours + 'h ' + rows[0].minutes + 'm'
             }
         };
     } else {
-        console.log('❌ Password does not match');
+        console.log('❌ Password does not match for:', username.trim());
         return { success: false };
     }
 }
@@ -799,10 +796,10 @@ async function updateUserVerification(gameUsername, discordId) {
 
         const uid = rows[0].uid;
 
-        // Step 2: Only update verified_id and verified
+        // Step 2: Store Discord ID in verifycode and set verify = 1
         const [result] = await connection.execute(`
             UPDATE users 
-            SET verified_id = ?, 
+            SET verifycode = ?, 
                 verify = 1 
             WHERE uid = ?
         `, [discordId, uid]);
@@ -840,9 +837,9 @@ async function unlinkUserVerification(discordId) {
 
         const [result] = await connection.execute(`
             UPDATE users 
-            SET verified_id = NULL, 
-                verified = 0 
-            WHERE verified_id = ?
+            SET verifycode = '0', 
+                verify = 0 
+            WHERE verifycode = ?
         `, [discordId]);
 
         const guild = client.guilds.cache.get(CONFIG.GUILD_ID);
@@ -931,7 +928,7 @@ client.once('ready', async () => {
         try {
             const messages = await channel.messages.fetch({ limit: 10 });
             await channel.bulkDelete(messages);   
-	        await client.application.commands.set(commands);
+                await client.application.commands.set(commands);
         } catch (error) {
             console.log('Could not delete old messages:', error.message);
         }
@@ -1010,19 +1007,19 @@ client.on('interactionCreate', async interaction => {
                     break;
 
                 case 'unban':
-				    const unbanUser = options.getUser('user');
-				
-				    if (!unbanUser) {
-				        return interaction.reply({ content: 'Please specify a valid user to unban.', flags: MessageFlags.Ephemeral });
-				    }
-				
-				    try {
-				        await guild.members.unban(unbanUser.id);
-				        await interaction.reply({ content: `Successfully unbanned ${unbanUser.tag}` });
-				    } catch (error) {
-				        await interaction.reply({ content: 'Failed to unban user. Make sure the user is banned and the ID is correct.', ephemeral: true });
-				    }
-				    break;
+                                    const unbanUser = options.getUser('user');
+                                
+                                    if (!unbanUser) {
+                                        return interaction.reply({ content: 'Please specify a valid user to unban.', flags: MessageFlags.Ephemeral });
+                                    }
+                                
+                                    try {
+                                        await guild.members.unban(unbanUser.id);
+                                        await interaction.reply({ content: `Successfully unbanned ${unbanUser.tag}` });
+                                    } catch (error) {
+                                        await interaction.reply({ content: 'Failed to unban user. Make sure the user is banned and the ID is correct.', ephemeral: true });
+                                    }
+                                    break;
 
                 case 'mute':
                     const muteUser = options.getUser('user');
@@ -1160,9 +1157,9 @@ client.on('interactionCreate', async interaction => {
                     break;
                 
                 case 'setup-tickets':
-				    await setupTicketSystem(interaction.channel);
-				    await interaction.reply({ content: `✅ Ticket system has been setup in ${interaction.channel}.` });
-				    break;
+                                    await setupTicketSystem(interaction.channel);
+                                    await interaction.reply({ content: `✅ Ticket system has been setup in ${interaction.channel}.` });
+                                    break;
 
                 case 'unlock':
                     const unlockChannel = options.getChannel('channel') || interaction.channel;
@@ -1197,309 +1194,309 @@ client.on('interactionCreate', async interaction => {
                     break;
 
                 case 'server':
-			        const fs = require('fs');
-			        
-			        // Check if server config exists
-			        if (!fs.existsSync('server-config.json')) {
-			            return interaction.reply({ 
-			                content: '❌ No server IP set! Use `/setip` to set the server IP first.', 
-			                flags: MessageFlags.Ephemeral
-			            });
-			        }
-			
-			        try {
-			            const serverConfig = JSON.parse(fs.readFileSync('server-config.json', 'utf8'));
-			            
-			            // Query the actual SA-MP server
-			            const serverInfo = await querySampServer(serverConfig.ip, serverConfig.port);
-			            
-			            const serverStatusEmbed = new EmbedBuilder()
-			                .setColor('#3498db')
-			                .setTitle(`🎮 ${serverInfo.hostname}`)
-			                .addFields(
-			                    { name: 'IP:PORT', value: `${serverConfig.ip}:${serverConfig.port}`, inline: true },
-			                    { name: 'PLAYERS', value: `${serverInfo.players}/${serverInfo.maxPlayers}`, inline: true },
-			                    { name: 'GAMEMODE', value: serverInfo.gamemode, inline: true },
-			                    { name: 'MAP', value: 'San Andreas', inline: true },
-			                    { name: 'LANGUAGE', value: serverInfo.language, inline: true },
-			                    { name: 'PASSWORD', value: serverInfo.passworded ? 'yes' : 'no', inline: true },
-			                    { name: 'STATUS', value: serverInfo.online ? '🟢 Online' : '🔴 Offline', inline: true }
-			                )
-			                .setTimestamp()
-			                .setFooter({ text: 'Server Status • Last updated' });
-			
-			            await interaction.reply({ embeds: [serverStatusEmbed] });
-			            
-			        } catch (error) {
-			            const errorEmbed = new EmbedBuilder()
-			                .setColor('#ff0000')
-			                .setTitle('❌ Server Offline')
-			                .setDescription('Cannot connect to the server. It might be offline or the IP/Port is incorrect.')
-			                .addFields(
-			                    { name: 'Server', value: `${serverConfig.ip}:${serverConfig.port}`, inline: true },
-			                    { name: 'Status', value: '🔴 Offline', inline: true }
-			                )
-			                .setTimestamp();
-			
-			            await interaction.reply({ embeds: [errorEmbed] });
-			        }
-			        break;
-			
-			    case 'setip':
-			        let rawIp = options.getString('ip');
-					let serverIp = rawIp;
-					let serverPort = 7777;
-					
-					if (rawIp.includes(':')) {
-					    const parts = rawIp.split(':');
-					    serverIp = parts[0];
-					    serverPort = parseInt(parts[1]) || 7777;
-					}
-			
-			        // Test the server connection before saving
-			        try {
-			            await interaction.deferReply();
-			            
-			            const testInfo = await querySampServer(serverIp, serverPort);
-			            
-			            // Store the IP and server info
-			            const fs = require('fs');
-			            const serverData = {
-			                ip: serverIp,
-			                port: serverPort,
-			                setBy: interaction.user.tag,
-			                timestamp: Date.now(),
-			                lastKnownInfo: testInfo
-			            };
-			
-			            fs.writeFileSync('server-config.json', JSON.stringify(serverData, null, 2));
-			
-			            const setIpEmbed = new EmbedBuilder()
-			                .setColor('#00ff88')
-			                .setTitle('✅ Server IP Updated')
-			                .setDescription(`**Server connection successful!**`)
-			                .addFields(
-			                    { name: 'Server Name', value: testInfo.hostname, inline: false },
-			                    { name: 'IP Address', value: `\`${serverIp}\``, inline: true },
-			                    { name: 'Port', value: `\`${serverPort}\``, inline: true },
-			                    { name: 'Players Online', value: `${testInfo.players}/${testInfo.maxPlayers}`, inline: true },
-			                    { name: 'Gamemode', value: testInfo.gamemode, inline: true },
-			                    { name: 'Language', value: testInfo.language, inline: true },
-			                    { name: 'Set by', value: interaction.user.tag, inline: true }
-			                )
-			                .setTimestamp()
-			                .setFooter({ text: 'Server configuration saved successfully' });
-			
-			            await interaction.editReply({ embeds: [setIpEmbed] });
-			            
-			        } catch (error) {
-			            await interaction.editReply({ 
-			                content: `❌ Cannot connect to server \`${serverIp}:${serverPort}\`! Please check if the IP and port are correct and the server is online.`, 
-			                flags: MessageFlags.Ephemeral
-			            });
-			        }
-			        break;
-			
-			    case 'players':
-				    const fs2 = require('fs');
-				    
-				    if (!fs2.existsSync('server-config.json')) {
-				        return interaction.reply({ 
-				            content: '❌ No server IP set! Use `/setip` command first.', 
-				            flags: MessageFlags.Ephemeral
-				        });
-				    }
-				
-				    try {
-				        const serverConfig = JSON.parse(fs2.readFileSync('server-config.json', 'utf8'));
-				        
-				        await interaction.deferReply();
-				        
-				        // Get basic server info and player list
-				        const [serverInfo, playerList] = await Promise.all([
-				            querySampServer(serverConfig.ip, serverConfig.port),
-				            getPlayerList(serverConfig.ip, serverConfig.port)
-				        ]);
-				        
-				        let playerListText = '';
-				        if (playerList.length === 0) {
-				            playerListText = '*Server is empty*';
-				        } else {
-				            playerListText = playerList.slice(0, 10).map(player => 
-				                `**${player.name}** (ID: ${player.id}, Score: ${player.score}, Ping: ${player.ping}ms)`
-				            ).join('\n');
-				            
-				            if (playerList.length > 10) {
-				                playerListText += `\n*...and ${playerList.length - 10} more players*`;
-				            }
-				        }
-				
-				        const playersEmbed = new EmbedBuilder()
-				            .setColor('#00ff88')
-				            .setTitle(`🎮 ${serverInfo.hostname}`)
-				            .setDescription(`**Server: ${serverConfig.ip}:${serverConfig.port}**\n\n**PLAYERS LIST**\n${playerListText}`)
-				            .addFields(
-				                { name: 'Online Players', value: `${serverInfo.players}/${serverInfo.maxPlayers}`, inline: true },
-				                { name: 'Server Status', value: '🟢 Online', inline: true },
-				                { name: 'Gamemode', value: serverInfo.gamemode, inline: true }
-				            )
-				            .setTimestamp()
-				            .setFooter({ text: serverInfo.hostname });
-				
-				        await interaction.editReply({ embeds: [playersEmbed] });
-				
-				    } catch (error) {
-				        await interaction.editReply({ 
-				            content: '❌ Cannot get player list! Server might be offline.', 
-				            flags: MessageFlags.Ephemeral
-				        });
-				    }
-				    break;
-			
-			    case 'ip':
-			        const fs3 = require('fs');
-			        
-			        if (!fs3.existsSync('server-config.json')) {
-			            return interaction.reply({ 
-			                content: '❌ No server IP set! Use `/setip` command first.', 
-			                flags: MessageFlags.Ephemeral
-			            });
-			        }
-			
-			        try {
-			            const ipConfig = JSON.parse(fs3.readFileSync('server-config.json', 'utf8'));
-			            
-			            // Try to get current server status
-			            let statusText = '🔴 Offline';
-			            let serverName = 'Unknown Server';
-			            
-			            try {
-			                const currentInfo = await querySampServer(ipConfig.ip, ipConfig.port);
-			                statusText = '🟢 Online';
-			                serverName = currentInfo.hostname;
-			            } catch (error) {
-			                // Use last known info if available
-			                if (ipConfig.lastKnownInfo) {
-			                    serverName = ipConfig.lastKnownInfo.hostname;
-			                }
-			            }
-			
-			            const ipEmbed = new EmbedBuilder()
-			                .setColor('#0099ff')
-			                .setTitle('🌐 Server Information')
-			                .setDescription(`**${serverName}**`)
-			                .addFields(
-			                    { name: 'IP Address', value: `\`${ipConfig.ip}\``, inline: false },
-			                    { name: 'Port', value: `\`${ipConfig.port}\``, inline: true },
-			                    { name: 'Status', value: statusText, inline: true },
-			                    { name: 'Last Updated', value: `<t:${Math.floor(ipConfig.timestamp / 1000)}:R>`, inline: true }
-			                )
-			                .setTimestamp()
-			                .setFooter({ text: 'Server IP Information' });
-			
-			            await interaction.reply({ embeds: [ipEmbed] });
-			            
-			        } catch (error) {
-			            await interaction.reply({ 
-			                content: '❌ Error reading server configuration!', 
-			                flags: MessageFlags.Ephemeral
-			            });
-			        }
-			        break;
-			
-			    default:
-			        await interaction.reply({ content: 'Unknown command!', flags: MessageFlags.Ephemeral });
-			}  
+                                const fs = require('fs');
+                                
+                                // Check if server config exists
+                                if (!fs.existsSync('server-config.json')) {
+                                    return interaction.reply({ 
+                                        content: '❌ No server IP set! Use `/setip` to set the server IP first.', 
+                                        flags: MessageFlags.Ephemeral
+                                    });
+                                }
+                        
+                                try {
+                                    const serverConfig = JSON.parse(fs.readFileSync('server-config.json', 'utf8'));
+                                    
+                                    // Query the actual SA-MP server
+                                    const serverInfo = await querySampServer(serverConfig.ip, serverConfig.port);
+                                    
+                                    const serverStatusEmbed = new EmbedBuilder()
+                                        .setColor('#3498db')
+                                        .setTitle(`🎮 ${serverInfo.hostname}`)
+                                        .addFields(
+                                            { name: 'IP:PORT', value: `${serverConfig.ip}:${serverConfig.port}`, inline: true },
+                                            { name: 'PLAYERS', value: `${serverInfo.players}/${serverInfo.maxPlayers}`, inline: true },
+                                            { name: 'GAMEMODE', value: serverInfo.gamemode, inline: true },
+                                            { name: 'MAP', value: 'San Andreas', inline: true },
+                                            { name: 'LANGUAGE', value: serverInfo.language, inline: true },
+                                            { name: 'PASSWORD', value: serverInfo.passworded ? 'yes' : 'no', inline: true },
+                                            { name: 'STATUS', value: serverInfo.online ? '🟢 Online' : '🔴 Offline', inline: true }
+                                        )
+                                        .setTimestamp()
+                                        .setFooter({ text: 'Server Status • Last updated' });
+                        
+                                    await interaction.reply({ embeds: [serverStatusEmbed] });
+                                    
+                                } catch (error) {
+                                    const errorEmbed = new EmbedBuilder()
+                                        .setColor('#ff0000')
+                                        .setTitle('❌ Server Offline')
+                                        .setDescription('Cannot connect to the server. It might be offline or the IP/Port is incorrect.')
+                                        .addFields(
+                                            { name: 'Server', value: `${serverConfig.ip}:${serverConfig.port}`, inline: true },
+                                            { name: 'Status', value: '🔴 Offline', inline: true }
+                                        )
+                                        .setTimestamp();
+                        
+                                    await interaction.reply({ embeds: [errorEmbed] });
+                                }
+                                break;
+                        
+                            case 'setip':
+                                let rawIp = options.getString('ip');
+                                        let serverIp = rawIp;
+                                        let serverPort = 7777;
+                                        
+                                        if (rawIp.includes(':')) {
+                                            const parts = rawIp.split(':');
+                                            serverIp = parts[0];
+                                            serverPort = parseInt(parts[1]) || 7777;
+                                        }
+                        
+                                // Test the server connection before saving
+                                try {
+                                    await interaction.deferReply();
+                                    
+                                    const testInfo = await querySampServer(serverIp, serverPort);
+                                    
+                                    // Store the IP and server info
+                                    const fs = require('fs');
+                                    const serverData = {
+                                        ip: serverIp,
+                                        port: serverPort,
+                                        setBy: interaction.user.tag,
+                                        timestamp: Date.now(),
+                                        lastKnownInfo: testInfo
+                                    };
+                        
+                                    fs.writeFileSync('server-config.json', JSON.stringify(serverData, null, 2));
+                        
+                                    const setIpEmbed = new EmbedBuilder()
+                                        .setColor('#00ff88')
+                                        .setTitle('✅ Server IP Updated')
+                                        .setDescription(`**Server connection successful!**`)
+                                        .addFields(
+                                            { name: 'Server Name', value: testInfo.hostname, inline: false },
+                                            { name: 'IP Address', value: `\`${serverIp}\``, inline: true },
+                                            { name: 'Port', value: `\`${serverPort}\``, inline: true },
+                                            { name: 'Players Online', value: `${testInfo.players}/${testInfo.maxPlayers}`, inline: true },
+                                            { name: 'Gamemode', value: testInfo.gamemode, inline: true },
+                                            { name: 'Language', value: testInfo.language, inline: true },
+                                            { name: 'Set by', value: interaction.user.tag, inline: true }
+                                        )
+                                        .setTimestamp()
+                                        .setFooter({ text: 'Server configuration saved successfully' });
+                        
+                                    await interaction.editReply({ embeds: [setIpEmbed] });
+                                    
+                                } catch (error) {
+                                    await interaction.editReply({ 
+                                        content: `❌ Cannot connect to server \`${serverIp}:${serverPort}\`! Please check if the IP and port are correct and the server is online.`, 
+                                        flags: MessageFlags.Ephemeral
+                                    });
+                                }
+                                break;
+                        
+                            case 'players':
+                                    const fs2 = require('fs');
+                                    
+                                    if (!fs2.existsSync('server-config.json')) {
+                                        return interaction.reply({ 
+                                            content: '❌ No server IP set! Use `/setip` command first.', 
+                                            flags: MessageFlags.Ephemeral
+                                        });
+                                    }
+                                
+                                    try {
+                                        const serverConfig = JSON.parse(fs2.readFileSync('server-config.json', 'utf8'));
+                                        
+                                        await interaction.deferReply();
+                                        
+                                        // Get basic server info and player list
+                                        const [serverInfo, playerList] = await Promise.all([
+                                            querySampServer(serverConfig.ip, serverConfig.port),
+                                            getPlayerList(serverConfig.ip, serverConfig.port)
+                                        ]);
+                                        
+                                        let playerListText = '';
+                                        if (playerList.length === 0) {
+                                            playerListText = '*Server is empty*';
+                                        } else {
+                                            playerListText = playerList.slice(0, 10).map(player => 
+                                                `**${player.name}** (ID: ${player.id}, Score: ${player.score}, Ping: ${player.ping}ms)`
+                                            ).join('\n');
+                                            
+                                            if (playerList.length > 10) {
+                                                playerListText += `\n*...and ${playerList.length - 10} more players*`;
+                                            }
+                                        }
+                                
+                                        const playersEmbed = new EmbedBuilder()
+                                            .setColor('#00ff88')
+                                            .setTitle(`🎮 ${serverInfo.hostname}`)
+                                            .setDescription(`**Server: ${serverConfig.ip}:${serverConfig.port}**\n\n**PLAYERS LIST**\n${playerListText}`)
+                                            .addFields(
+                                                { name: 'Online Players', value: `${serverInfo.players}/${serverInfo.maxPlayers}`, inline: true },
+                                                { name: 'Server Status', value: '🟢 Online', inline: true },
+                                                { name: 'Gamemode', value: serverInfo.gamemode, inline: true }
+                                            )
+                                            .setTimestamp()
+                                            .setFooter({ text: serverInfo.hostname });
+                                
+                                        await interaction.editReply({ embeds: [playersEmbed] });
+                                
+                                    } catch (error) {
+                                        await interaction.editReply({ 
+                                            content: '❌ Cannot get player list! Server might be offline.', 
+                                            flags: MessageFlags.Ephemeral
+                                        });
+                                    }
+                                    break;
+                        
+                            case 'ip':
+                                const fs3 = require('fs');
+                                
+                                if (!fs3.existsSync('server-config.json')) {
+                                    return interaction.reply({ 
+                                        content: '❌ No server IP set! Use `/setip` command first.', 
+                                        flags: MessageFlags.Ephemeral
+                                    });
+                                }
+                        
+                                try {
+                                    const ipConfig = JSON.parse(fs3.readFileSync('server-config.json', 'utf8'));
+                                    
+                                    // Try to get current server status
+                                    let statusText = '🔴 Offline';
+                                    let serverName = 'Unknown Server';
+                                    
+                                    try {
+                                        const currentInfo = await querySampServer(ipConfig.ip, ipConfig.port);
+                                        statusText = '🟢 Online';
+                                        serverName = currentInfo.hostname;
+                                    } catch (error) {
+                                        // Use last known info if available
+                                        if (ipConfig.lastKnownInfo) {
+                                            serverName = ipConfig.lastKnownInfo.hostname;
+                                        }
+                                    }
+                        
+                                    const ipEmbed = new EmbedBuilder()
+                                        .setColor('#0099ff')
+                                        .setTitle('🌐 Server Information')
+                                        .setDescription(`**${serverName}**`)
+                                        .addFields(
+                                            { name: 'IP Address', value: `\`${ipConfig.ip}\``, inline: false },
+                                            { name: 'Port', value: `\`${ipConfig.port}\``, inline: true },
+                                            { name: 'Status', value: statusText, inline: true },
+                                            { name: 'Last Updated', value: `<t:${Math.floor(ipConfig.timestamp / 1000)}:R>`, inline: true }
+                                        )
+                                        .setTimestamp()
+                                        .setFooter({ text: 'Server IP Information' });
+                        
+                                    await interaction.reply({ embeds: [ipEmbed] });
+                                    
+                                } catch (error) {
+                                    await interaction.reply({ 
+                                        content: '❌ Error reading server configuration!', 
+                                        flags: MessageFlags.Ephemeral
+                                    });
+                                }
+                                break;
+                        
+                            default:
+                                await interaction.reply({ content: 'Unknown command!', flags: MessageFlags.Ephemeral });
+                        }  
         }
        
-   	else if (interaction.isStringSelectMenu()) {
-		    if (interaction.customId === 'select_ticket_category') {
-		        const categoryKey = interaction.values[0];
-		        const category = TICKET_CATEGORIES[categoryKey];
-		
-		        await createTicket(interaction, category, categoryKey);
-		    }
-		}
-		
-		else if (interaction.isButton()) {
-		    // Ticket buttons
-		    if (interaction.customId === 'close_ticket') {
-		        await closeTicket(interaction);
-		    } else if (interaction.customId === 'delete_ticket') {
-		        await deleteTicket(interaction);
-		    }
-		
-		    // Verification buttons
-		    else if (interaction.customId === 'link_account') {
-		        if (verifiedUsers.has(interaction.user.id)) {
-		            return interaction.reply({
-		                content: '❌ Your account is already verified!',
-		                flags: MessageFlags.Ephemeral
-		            });
-		        }
-		
-		        const modal = createLinkingModal();
-		        await interaction.showModal(modal);
-		    }
-		
-		    else if (interaction.customId === 'unlink_account') {
-		        if (!verifiedUsers.has(interaction.user.id)) {
-		            return interaction.reply({
-		                content: '❌ Your account is not linked!',
-		                flags: MessageFlags.Ephemeral
-		            });
-		        }
-		
-		        const unlinked = await unlinkUserVerification(interaction.user.id);
-		        if (!unlinked) {
-		            return interaction.reply({
-		                content: '❌ Failed to unlink your account from the database.',
-		                flags: MessageFlags.Ephemeral
-		            });
-		        }
-		
-		        verifiedUsers.delete(interaction.user.id);
-		        saveVerifiedUsers();
-		
-		        const member = interaction.guild.members.cache.get(interaction.user.id);
-		        if (member) {
-		            try {
-		                await member.roles.remove('1331652221498167316');
-		            } catch (error) {
-		                console.error('Error removing role:', error);
-		            }
-		        }
-		
-		        await interaction.reply({
-		            content: '✅ Your account has been unlinked successfully!',
-		            flags: MessageFlags.Ephemeral
-		        });
-		    }
-		
-		    else if (interaction.customId === 'info') {
-		        const infoEmbed = new Discord.EmbedBuilder()
-		            .setTitle('ℹ️ Verification Information')
-		            .setDescription(
-		                "**How to verify:**\n" +
-		                "1. Click the **Link** button\n" +
-		                "2. Enter your in-game **username** and **password**\n" +
-		                "3. Wait for the verification to complete\n\n" +
-		                "**Why verify?**\n" +
-		                "• Access to **exclusive channels**\n" +
-		                "• Participate in **server events**\n" +
-		                "• Gain **enhanced security features**\n\n" +
-		                "**Need help?**\n" +
-		                "Contact a **staff member** if you experience issues."
-		            )
-		            .setColor(0x3498db)
-		            .setTimestamp();
-		
-		        await interaction.reply({
-		            embeds: [infoEmbed],
-		            flags: MessageFlags.Ephemeral
-		        });
-		    }
-		}
+        else if (interaction.isStringSelectMenu()) {
+                    if (interaction.customId === 'select_ticket_category') {
+                        const categoryKey = interaction.values[0];
+                        const category = TICKET_CATEGORIES[categoryKey];
+                
+                        await createTicket(interaction, category, categoryKey);
+                    }
+                }
+                
+                else if (interaction.isButton()) {
+                    // Ticket buttons
+                    if (interaction.customId === 'close_ticket') {
+                        await closeTicket(interaction);
+                    } else if (interaction.customId === 'delete_ticket') {
+                        await deleteTicket(interaction);
+                    }
+                
+                    // Verification buttons
+                    else if (interaction.customId === 'link_account') {
+                        if (verifiedUsers.has(interaction.user.id)) {
+                            return interaction.reply({
+                                content: '❌ Your account is already verified!',
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+                
+                        const modal = createLinkingModal();
+                        await interaction.showModal(modal);
+                    }
+                
+                    else if (interaction.customId === 'unlink_account') {
+                        if (!verifiedUsers.has(interaction.user.id)) {
+                            return interaction.reply({
+                                content: '❌ Your account is not linked!',
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+                
+                        const unlinked = await unlinkUserVerification(interaction.user.id);
+                        if (!unlinked) {
+                            return interaction.reply({
+                                content: '❌ Failed to unlink your account from the database.',
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+                
+                        verifiedUsers.delete(interaction.user.id);
+                        saveVerifiedUsers();
+                
+                        const member = interaction.guild.members.cache.get(interaction.user.id);
+                        if (member) {
+                            try {
+                                await member.roles.remove('1331652221498167316');
+                            } catch (error) {
+                                console.error('Error removing role:', error);
+                            }
+                        }
+                
+                        await interaction.reply({
+                            content: '✅ Your account has been unlinked successfully!',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                
+                    else if (interaction.customId === 'info') {
+                        const infoEmbed = new Discord.EmbedBuilder()
+                            .setTitle('ℹ️ Verification Information')
+                            .setDescription(
+                                "**How to verify:**\n" +
+                                "1. Click the **Link** button\n" +
+                                "2. Enter your in-game **username** and **password**\n" +
+                                "3. Wait for the verification to complete\n\n" +
+                                "**Why verify?**\n" +
+                                "• Access to **exclusive channels**\n" +
+                                "• Participate in **server events**\n" +
+                                "• Gain **enhanced security features**\n\n" +
+                                "**Need help?**\n" +
+                                "Contact a **staff member** if you experience issues."
+                            )
+                            .setColor(0x3498db)
+                            .setTimestamp();
+                
+                        await interaction.reply({
+                            embeds: [infoEmbed],
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                }
         
         // Handle Modal Submit Interactions
         else if (interaction.isModalSubmit()) {
@@ -1516,25 +1513,25 @@ client.on('interactionCreate', async interaction => {
                 });
                 
                 try {
-		            // Verify account with game server
-		            const verification = await verifyGameAccount(username, password);
-		
-		            if (verification.success) {
-		                // Add to verified users
-		                verifiedUsers.add(interaction.user.id);
-		                saveVerifiedUsers();
-		                 
-		                const update = await updateUserVerification(username, interaction.user.id);
-		
-		                // Add verified role
-		                const member = interaction.guild.members.cache.get(interaction.user.id);
-		                if (member) {
-		                    try {
-		                        await member.roles.add('1331652221498167316');  // <-- verified role ID
-		                    } catch (error) {
-		                        console.error('Error adding role:', error);
-		                    }
-		                }
+                            // Verify account with game server
+                            const verification = await verifyGameAccount(username, password);
+                
+                            if (verification.success) {
+                                // Add to verified users
+                                verifiedUsers.add(interaction.user.id);
+                                saveVerifiedUsers();
+                                 
+                                const update = await updateUserVerification(username, interaction.user.id);
+                
+                                // Add verified role
+                                const member = interaction.guild.members.cache.get(interaction.user.id);
+                                if (member) {
+                                    try {
+                                        await member.roles.add('1331652221498167316');  // <-- verified role ID
+                                    } catch (error) {
+                                        console.error('Error adding role:', error);
+                                    }
+                                }
                         
                         // Log verification
                         const logChannel = interaction.guild.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
