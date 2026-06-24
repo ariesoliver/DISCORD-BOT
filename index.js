@@ -657,12 +657,12 @@ function saveVerifiedUsers() {
 function createVerificationEmbed(client) {
     return new EmbedBuilder()
         .setAuthor({
-            name: 'SOUTHSIDE CITY ROLEPLAY ',
+            name: 'TEST CITY ROLEPLAY (AriesOliver)',
             iconURL: client.user.displayAvatarURL()
         })
-        .setTitle('SOUTHSIDE CITY ROLEPLAY ')
+        .setTitle('TEST CITY ROLEPLAY (AriesOliver)')
         .setDescription(
-            'Welcome to the official Discord server of  SCRP! 👋\n\n' +
+            'Welcome to the official Discord server of  TEST CITY ROLEPLAY (AriesOliver)! 👋\n\n' +
             'To keep our community safe and organized, please verify your account.\n\n' +
             'Once verified, you’ll get full access to channels, updates, and events.\n\n' +
             '_Thank you for joining us — we’re excited to have you here!_'
@@ -670,7 +670,7 @@ function createVerificationEmbed(client) {
         .setColor(0x5865F2)
         .setThumbnail('https://cdn.discordapp.com/attachments/1380124644891426816/1380484264835158087/file_0000000069ec61fdbc59dc74f78f16f1.png')
         .setFooter({ 
-            text: '© Syntaxerror • SCRP', 
+            text: '© AriesOliver • TEST CITY ROLEPLAY', 
             iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp();
